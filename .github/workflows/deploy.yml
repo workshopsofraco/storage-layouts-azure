@@ -1,0 +1,70 @@
+# Storage layout pages on Azure (Sofraco's own subscription), behind Microsoft sign-in.
+# Builds the same pages as workshopsofraco/workshopsofraco.github.io from that repository's
+# data and tools (read only - nothing is ever written there) and deploys them to the
+# Azure Static Web App "sofraco-storage-layouts".
+name: Build and deploy to Azure
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: azure
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: workshopsofraco/workshopsofraco.github.io
+          path: src
+      - id: sha
+        run: echo "sha=$(git -C src rev-parse HEAD)" >> $GITHUB_OUTPUT
+      - id: seen
+        uses: actions/cache/restore@v4
+        with:
+          path: .seen
+          key: built-${{ steps.sha.outputs.sha }}
+          lookup-only: true
+      - id: changed
+        name: Anything new on the source site?
+        run: |
+          if [ "${{ steps.seen.outputs.cache-hit }}" = "true" ] && [ "${{ github.event_name }}" = "schedule" ]; then echo "go=no" >> $GITHUB_OUTPUT; else echo "go=yes" >> $GITHUB_OUTPUT; fi
+      - if: steps.changed.outputs.go == 'yes'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: steps.changed.outputs.go == 'yes'
+        name: Build the pages for the Azure address
+        run: |
+          pip install pillow "qrcode[pil]" reportlab
+          cd src
+          python - <<'EOF'
+          import json
+          p = "data/locations.json"
+          d = json.load(open(p, encoding="utf-8"))
+          d["base_url"] = "https://kind-desert-0fc777500.4.azurestaticapps.net/"
+          json.dump(d, open(p, "w", encoding="utf-8"), indent=2)
+          EOF
+          python tools/build.py --no-pull --pdfs
+          cp ../staticwebapp.config.json .
+          mkdir -p ../_swa && rsync -a --exclude .git --exclude .github --exclude tools ./ ../_swa/
+      - if: steps.changed.outputs.go == 'yes'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: _swa
+          skip_app_build: true
+          skip_api_build: true
+      - if: steps.changed.outputs.go == 'yes'
+        run: mkdir -p .seen && echo "${{ steps.sha.outputs.sha }}" > .seen/sha
+      - if: steps.changed.outputs.go == 'yes' && steps.seen.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .seen
+          key: built-${{ steps.sha.outputs.sha }}
