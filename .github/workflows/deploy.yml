@@ -51,6 +51,19 @@ jobs:
           json.dump(d, open(p, "w", encoding="utf-8"), indent=2)
           EOF
           python tools/build.py --no-pull --pdfs
+          # Azure's own login already signed the person in to Microsoft, so the pages' sign-in
+          # (needed for the flow) runs by itself instead of showing "Sign in with Sofraco" (Hugo 16/11/2026)
+          python - <<'EOF'
+          import pathlib
+          JS = ("<script>(function(){var n=0,iv=setInterval(function(){var s=document.getElementById('gatescreen'),b=document.getElementById('gatebtn');"
+                "if(++n>100)return clearInterval(iv);if(!s||s.hidden||!b)return;clearInterval(iv);"
+                "try{var k='sl-autosign',t=+sessionStorage.getItem(k)||0;if(Date.now()-t<60000)return;sessionStorage.setItem(k,Date.now())}catch(e){}"
+                "b.click()},100)})()</script></body>")
+          for p in pathlib.Path(".").rglob("index.html"):
+              h = p.read_text(encoding="utf-8")
+              if 'id="gatebtn"' in h and "sl-autosign" not in h:
+                  p.write_text(h.replace("</body>", JS, 1), encoding="utf-8")
+          EOF
           cp ../staticwebapp.config.json .
           mkdir -p ../_swa && rsync -a --exclude .git --exclude .github --exclude tools ./ ../_swa/
       - if: steps.changed.outputs.go == 'yes'
