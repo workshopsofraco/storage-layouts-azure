@@ -1,4 +1,4 @@
-﻿{
+{
   "routes": [
     { "route": "/.auth/*", "allowedRoles": ["anonymous"] },
     { "route": "/*", "allowedRoles": ["authenticated"] }
@@ -7,5 +7,5 @@
     "401": { "redirect": "/.auth/login/aad?post_login_redirect_uri=.referrer", "statusCode": 302 },
     "404": { "rewrite": "/404.html" }
   },
-  "globalHeaders": { "X-Robots-Tag": "noindex" }
+  "globalHeaders": { "X-Robots-Tag": "noindex", "Cache-Control": "no-cache" }
 }
