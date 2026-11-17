@@ -28,7 +28,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .seen
-          key: built-${{ steps.sha.outputs.sha }}
+          # The key names the address the pages are built for, so changing the address rebuilds once
+          key: built-storage-${{ steps.sha.outputs.sha }}
           lookup-only: true
       - id: changed
         name: Anything new on the source site?
@@ -47,7 +48,7 @@ jobs:
           import json
           p = "data/locations.json"
           d = json.load(open(p, encoding="utf-8"))
-          d["base_url"] = "https://kind-desert-0fc777500.4.azurestaticapps.net/"
+          d["base_url"] = "https://storage.sofraco.com.au/"
           json.dump(d, open(p, "w", encoding="utf-8"), indent=2)
           EOF
           python tools/build.py --no-pull --pdfs
@@ -80,4 +81,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .seen
-          key: built-${{ steps.sha.outputs.sha }}
+          key: built-storage-${{ steps.sha.outputs.sha }}
