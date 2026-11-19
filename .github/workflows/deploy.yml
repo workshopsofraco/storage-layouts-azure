@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: workshopsofraco/workshopsofraco.github.io
+          token: ${{ secrets.SRC_TOKEN }}   # the source repository is private (Hugo 19/11/2026: nothing public on GitHub)
           path: src
       - id: sha
         run: echo "sha=$(git -C src rev-parse HEAD)" >> $GITHUB_OUTPUT
